@@ -11,21 +11,27 @@ screen = pygame.display.set_mode((1600, 760))
 pygame.display.set_caption('Clicker Game')  
   
 # Load the button image  
-button_image = pygame.image.load('button.png').convert_alpha()  # Ensure the file exists in the directory  
+button_image = pygame.image.load('button_image.png').convert_alpha()  # Ensure the file exists in the directory  
 original_button_rect = button_image.get_rect(center=(800, 380))  
   
-# Font for displaying text  
-font = pygame.font.Font(None, 74)  
-popup_font = pygame.font.Font(None, 150)  
+# Load Fredoka font  
+fredoka_font_path = 'FredokaOne-Regular.ttf'  # Ensure this file is in the same directory  
+font = pygame.font.Font(fredoka_font_path, 74)  
+popup_font = pygame.font.Font(fredoka_font_path, 150)  
   
 money = 0  # Starting money  
 hovering = False  
 tween_time = 0  
-tween_duration = 30  # Number of frames for tweening  
+tween_duration = 15  # Faster animation by reducing duration  
 click_multiplier = 1  
 popup_visible = False  
 popup_time = 0  
 particles = []  
+  
+# Auto-clicker settings  
+auto_click_rate = 0  # Start with no auto-clicks  
+auto_click_timer = 0  
+auto_click_cost = 100  # Cost to purchase or upgrade the auto-clicker  
   
 multipliers = {  
     'Dc': 1e33, 'No': 1e30, 'Oc': 1e27, 'Sp': 1e24, 'Sx': 1e21,  
@@ -36,15 +42,17 @@ def format_large_number(number):
     """ Format large numbers with appropriate suffix. """  
     for suffix, size in multipliers.items():  
         if number >= size:  
-            return f"{number/size:.1f}{suffix}"  
+            return f"{number/size:.2f}{suffix}"  
     return str(number)  
   
 def quart_ease_out(t):  
     return 1 - (1 - t) ** 4  
   
 # Main game loop  
+clock = pygame.time.Clock()  
 running = True  
 while running:  
+    dt = clock.tick(60) / 1000  # Delta time in seconds  
     screen.fill((0, 0, 0))  # Fill the screen with black  
   
     for event in pygame.event.get():  
@@ -59,6 +67,18 @@ while running:
                     for _ in range(20):  # Create 20 particles  
                         particles.append([event.pos[0], event.pos[1], random.uniform(-2, 2), random.uniform(-2, 2), 100])  
                 money += click_multiplier  
+  
+            # Check if user wants to buy or upgrade the auto-clicker  
+            if 50 < event.pos[0] < 250 and 100 < event.pos[1] < 200 and money >= auto_click_cost:  
+                money -= auto_click_cost  
+                auto_click_rate += 1  # Increase click rate  
+                auto_click_cost *= 2  # Increase cost for next upgrade  
+  
+    # Auto-clicker logic  
+    auto_click_timer += dt  
+    if auto_click_rate > 0 and auto_click_timer >= 1 / auto_click_rate:  
+        money += click_multiplier  
+        auto_click_timer = 0  
   
     # Detect hover  
     mouse_pos = pygame.mouse.get_pos()  
@@ -78,6 +98,10 @@ while running:
     # Render and display the money  
     money_text = font.render(f'Money: {format_large_number(money)}', True, (255, 255, 255))  
     screen.blit(money_text, (50, 50))  
+  
+    # Render and display the auto-clicker upgrade option  
+    upgrade_text = font.render(f'Auto-Clicker: {format_large_number(auto_click_cost)}', True, (255, 255, 255))  
+    screen.blit(upgrade_text, (50, 100))  
   
     # Handle popup text  
     if popup_visible:  
